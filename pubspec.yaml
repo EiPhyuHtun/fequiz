@@ -68,6 +68,8 @@ flutter:
     - assets/images/20232.png
     - assets/images/2022.png
     - assets/images/20222.png
+    - assets/images/avatar.jpg
+    - assets/images/people.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware
