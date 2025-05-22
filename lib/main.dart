@@ -1,7 +1,13 @@
+import 'dart:io' as io;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+
 void main() {
   runApp(QuizApp());
 }
+
 class QuizApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -11,11 +17,12 @@ class QuizApp extends StatelessWidget {
     );
   }
 }
-// :white_tick: Splash Screen
+
 class SplashScreen extends StatefulWidget {
   @override
   _SplashScreenState createState() => _SplashScreenState();
 }
+
 class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
@@ -26,6 +33,7 @@ class _SplashScreenState extends State<SplashScreen> {
       );
     });
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -40,18 +48,21 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 }
-// :white_tick: Main Screen with BottomNavigationBar
+
 class MainTabScreen extends StatefulWidget {
   @override
   _MainTabScreenState createState() => _MainTabScreenState();
 }
+
 class _MainTabScreenState extends State<MainTabScreen> {
   int _currentIndex = 0;
+
   final List<Widget> _pages = [
     ExamTypeScreen(),
     ProfileScreen(),
     MenuScreen(),
   ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -74,7 +85,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
     );
   }
 }
-// :white_tick: Exam Type Screen
+
 class ExamTypeScreen extends StatelessWidget {
   final List<Map<String, String>> examTypes = [
     {'year': '2024', 'month': 'October', 'image': 'assets/images/2024.png'},
@@ -84,15 +95,15 @@ class ExamTypeScreen extends StatelessWidget {
     {'year': '2022', 'month': 'October', 'image': 'assets/images/2022.png'},
     {'year': '2022', 'month': 'April', 'image': 'assets/images/20222.png'},
   ];
+
   @override
   Widget build(BuildContext context) {
     final height = MediaQuery.of(context).size.height;
+
     return Scaffold(
       body: Stack(
         children: [
-          // :white_tick: Background
           Container(color: Colors.white),
-          // :white_tick: Curved Header
           ClipPath(
             clipper: BottomWaveClipper(),
             child: Container(
@@ -100,7 +111,6 @@ class ExamTypeScreen extends StatelessWidget {
               color: Colors.cyan,
             ),
           ),
-          // :white_tick: Header Title
           Positioned(
             top: 120,
             left: 24,
@@ -113,16 +123,14 @@ class ExamTypeScreen extends StatelessWidget {
               ),
             ),
           ),
-          // :white_tick: Profile Avatar (top right)
           Positioned(
             top: 50,
             right: 20,
             child: CircleAvatar(
-              backgroundImage: AssetImage('assets/images/people.png'), // Replace with your actual path
+              backgroundImage: AssetImage('assets/images/people.png'),
               radius: 20,
             ),
           ),
-          // :white_tick: Grid Cards
           Padding(
             padding: EdgeInsets.only(top: height * 0.27),
             child: Container(
@@ -183,25 +191,149 @@ class ExamTypeScreen extends StatelessWidget {
     );
   }
 }
-// :white_tick: Dummy Profile Screen
-class ProfileScreen extends StatelessWidget {
+
+class ProfileScreen extends StatefulWidget {
+  @override
+  _ProfileScreenState createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  XFile? _pickedFile;
+  final picker = ImagePicker();
+  final nameController = TextEditingController();
+
+  Future<void> _pickImage() async {
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _pickedFile = pickedFile;
+      });
+    }
+  }
+
+  Future<void> _uploadData() async {
+    if (_pickedFile == null || nameController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("名前と画像を入力してください")),
+      );
+      return;
+    }
+
+    final uri = Uri.parse("http://10.0.2.2/fequiz/upload_user.php"); // ← Updated here
+    var request = http.MultipartRequest('POST', uri);
+    request.fields['name'] = nameController.text;
+
+    if (kIsWeb) {
+      final bytes = await _pickedFile!.readAsBytes();
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'image',
+          bytes,
+          filename: _pickedFile!.name,
+        ),
+      );
+    } else {
+      request.files.add(
+        await http.MultipartFile.fromPath("image", _pickedFile!.path),
+      );
+    }
+
+    var response = await request.send();
+    if (response.statusCode == 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("アップロード成功")),
+      );
+      setState(() {
+        _pickedFile = null;
+        nameController.clear();
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("アップロード失敗")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Text(":silhouette: Profile Page", style: TextStyle(fontSize: 24)),
+    Widget imagePreview;
+    if (_pickedFile == null) {
+      imagePreview = Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.image, size: 28),
+          SizedBox(width: 8),
+          Text("画像を選択", style: TextStyle(fontSize: 18)),
+        ],
+      );
+    } else if (kIsWeb) {
+      imagePreview = Image.network(_pickedFile!.path);
+    } else {
+      imagePreview = Image.file(io.File(_pickedFile!.path), fit: BoxFit.cover);
+    }
+
+    return Scaffold(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          children: [
+            SizedBox(height: 80),
+            Text("QUIZ 4 ✅", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+            SizedBox(height: 24),
+            Text('サインアップ', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+            SizedBox(height: 24),
+            GestureDetector(
+              onTap: _pickImage,
+              child: Container(
+                height: 120,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.black54, width: 2),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Center(child: imagePreview),
+              ),
+            ),
+            SizedBox(height: 24),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text("名前", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
+            SizedBox(height: 8),
+            TextField(
+              controller: nameController,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.white70,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: _uploadData,
+              style: ElevatedButton.styleFrom(
+                minimumSize: Size(double.infinity, 60),
+                backgroundColor: Colors.blue,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text("サインアップ", style: TextStyle(fontSize: 20)),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
-// :white_tick: Dummy Menu Screen
+
 class MenuScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Text(":clipboard: Menu Page", style: TextStyle(fontSize: 24)),
+      child: Text("Menu Page", style: TextStyle(fontSize: 24)),
     );
   }
 }
-// :white_tick: Curved Header Clipper
+
 class BottomWaveClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
@@ -214,6 +346,7 @@ class BottomWaveClipper extends CustomClipper<Path> {
     path.close();
     return path;
   }
+
   @override
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
