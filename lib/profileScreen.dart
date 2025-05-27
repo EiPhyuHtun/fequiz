@@ -1,7 +1,9 @@
 import 'dart:io' as io;
+import 'package:fequiz/mysql1.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:mysql1/mysql1.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override
@@ -12,6 +14,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   XFile? _imageFile;
   final ImagePicker _picker = ImagePicker();
   final nameController = TextEditingController();
+  final db=Mysql();
   bool _isLoading = false;
   String? _statusMessage;
 
@@ -23,6 +26,75 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
     }
   }
+
+  Future<void> insertuserWithImageBlob() async {
+    if (_imageFile == null) {
+      setState(() {
+        _statusMessage = 'Please select an image.';
+      });
+      return;
+    }
+    if (nameController.text.isEmpty) {
+      setState(() {
+        _statusMessage = 'Please enter user name and description.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _statusMessage = null;
+    });
+
+    MySqlConnection? conn; // Initialize connection variable
+    try {
+      // 1. Read the image file into a Uint8List (raw bytes)
+      final Uint8List imageBytes = await _imageFile!.readAsBytes();
+
+      // 2. Get MySQL connection
+      conn = await Mysql().getConnection();
+      print("Connection established successfully.");
+
+      // 3. Prepare and execute the INSERT query
+      // Use prepared statements to properly handle binary data and prevent SQL injection
+      var result = await conn.query(
+        'INSERT INTO users (user_name,user_image) VALUES (?, ?)',
+        [
+          nameController.text,
+          imageBytes, // Pass the Uint8List directly
+        ],
+      );
+
+      if (result.affectedRows! > 0) {
+        setState(() {
+          _statusMessage = 'user and image BLOB inserted successfully! New ID: ${result.insertId}';
+          nameController.clear();
+          _imageFile = null;
+        });
+        print('Insert successful. New user ID: ${result.insertId}');
+      } else {
+        setState(() {
+          _statusMessage = 'Failed to insert user data. No rows affected.';
+        });
+        print('Insert failed: No rows affected.');
+      }
+    } catch (e) {
+      setState(() {
+        _statusMessage = 'Error during insertion: $e';
+      });
+      print('Error during BLOB insertion: $e');
+    } finally {
+      // Always close the connection in a finally block
+      if (conn != null) {
+        await conn.close();
+        print("Connection closed.");
+      }
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   void dispose() {
     nameController.dispose();
@@ -32,6 +104,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
   //method insert data in MySql 
   //connect the database
 
+void insertData(){
+db.getConnection().then((conn) {
+
+ String sqlQuery = 'insert into users (user_name,user_image) values (?,?)';
+ conn.query(sqlQuery,[nameController.text,null]);
+ setState(() {
+   
+ });
+ print("Data Insert Successful....");
+
+});
+
+
+}
   @override 
   Widget build(BuildContext context) {
     Widget imagePreview;
@@ -89,6 +175,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             SizedBox(height: 32),
             ElevatedButton(
                onPressed: () {
+                insertuserWithImageBlob();
+                print("Data Insert.....");
                },
              
               style: ElevatedButton.styleFrom(
