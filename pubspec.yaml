@@ -32,6 +32,10 @@ dependencies:
     sdk: flutter
   image_picker: ^1.0.7
   http: ^0.13.6
+  sqflite: ^2.3.2
+  sqflite_common_ffi: ^2.3.0+3
+  sqflite_common_ffi_web: ^0.4.2+3
+  path: ^1.8.3
   
 # Web support
 dependency_overrides:
@@ -75,6 +79,8 @@ flutter:
     - assets/images/20222.png
     - assets/images/avatar.jpg
     - assets/images/people.png
+    # database accept
+    - assets/database/fequiz_db.db
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:io' as io;
+import 'package:fequiz/model/user.dart';
 import 'package:fequiz/profileScreen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';

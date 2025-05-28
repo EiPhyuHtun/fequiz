@@ -1,7 +1,13 @@
 import 'dart:io' as io;
+import 'dart:io';
+import 'package:fequiz/database/database_helper.dart';
+import 'package:fequiz/main.dart';
+import 'package:fequiz/model/user.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override
@@ -9,20 +15,61 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+   // Initialize your database helper
+  final dbHelper = DatabaseHelper.instance;
   XFile? _imageFile;
   final ImagePicker _picker = ImagePicker();
   final nameController = TextEditingController();
-  bool _isLoading = false;
-  String? _statusMessage;
+  Uint8List? _selectedImageBytes; 
+  List<User> _users = [];
 
+
+    @override
+  void initState() {
+    super.initState();
+    _loadImages();
+  }
   Future<void> _pickImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
+      final bytes = await pickedFile.readAsBytes();
+
       setState(() {
         _imageFile = pickedFile;
+        _selectedImageBytes = bytes;
       });
     }
   }
+  Future<void> insertUser() async {
+    WidgetsFlutterBinding.ensureInitialized();
+
+    if (_selectedImageBytes != null && nameController.text.isNotEmpty) {
+      await dbHelper.insertUser(User(userName: nameController.text, userImage: _selectedImageBytes!));
+
+      setState(() {
+        nameController.clear();
+        _selectedImageBytes = null; // Clear selected image
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User Created Successfully')),
+      ); 
+      Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (context) =>  ExamTypeScreen()),
+  ); 
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select an image and enter a title.')),
+      );
+    }
+  }
+
+  Future<void> _loadImages() async {
+    final List<Map<String, dynamic>> maps = await dbHelper.getUsers();
+    setState(() {
+      _users = maps.map((map) => User.fromMap(map)).toList();
+    });
+  }
+
   @override
   void dispose() {
     nameController.dispose();
@@ -89,6 +136,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             SizedBox(height: 32),
             ElevatedButton(
                onPressed: () {
+                print('Insert Data');
+                insertUser();
                },
              
               style: ElevatedButton.styleFrom(
